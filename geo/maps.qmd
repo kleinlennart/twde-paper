@@ -1,0 +1,266 @@
+---
+title: "TWDE Maps"
+author: "Lennart Klein"
+format: 
+  html:
+    code-link: true
+    code-copy: hover
+    toc: true
+    toc-location: left
+    number-sections: true
+    theme: cosmo
+    # embed-resources: true
+execute:
+  cache: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup}
+library(tidyverse)
+library(sf)
+```
+
+https://r-spatial.org/r/2018/10/25/ggplot2-sf.html
+https://r-spatial.org/book/
+
+## 1. Get EU Features + Extract Germany
+Download NUTS Data from: https://ec.europa.eu/eurostat/web/gisco/geodata/reference-data/administrative-units-statistical-units/nuts
+
+```{r}
+# NOTE: Sys.setenv(OGR_GEOJSON_MAX_OBJ_SIZE=500)
+# geo_json <- sf::st_read(here::here("geo", "data", "NUTS_RG_20M_2021_3035.geojson"))
+# names(geo_json)
+#
+# # select German federal states
+# de <- geo_json %>%
+#   filter(CNTR_CODE == "DE") %>%
+#   filter(LEVL_CODE == 1)
+#
+# # Douglas–Peucker algorithm to simplify for quicker printing
+# de <- de %>% sf::st_simplify(preserveTopology = TRUE, dTolerance = 1000)
+
+## Save reduced version
+# saveRDS(de, here::here("geo" , "data", "DE_geo.rds"))
+```
+
+```{r}
+de <- readRDS(here::here("geo", "data", "DE_geo.rds"))
+de <- de %>% arrange(NUTS_NAME)
+
+de$ID <- c(
+  "BW", "BY", "BE", "BB", "HB", "HH", "HE", "MV", "NI", "NW",
+  "RP", "SL", "SN", "ST", "SH", "TH"
+)
+
+de <- de %>% select(ID, NUTS_NAME, geometry)
+```
+
+## 2. Get Geo Twitter Data
+
+Exported from geo-tagging pipeline:
+```{r}
+# user-level
+geo_users <- readRDS("geo/data/geo_final.rds")
+
+# tweet-level
+geo_tweets <- all_split$dataset %>%
+  select(user_id, status_id) %>%
+  left_join(geo_users, by = join_by(user_id == user_id))
+```
+
+## 3. Make States summary stats
+```{r}
+geo_stats_users <- geo_users %>%
+  summarize(
+    BW = sum(geo_bw),
+    BY = sum(geo_by),
+    BE = sum(geo_be),
+    BB = sum(geo_bb),
+    HB = sum(geo_hb),
+    HH = sum(geo_hh),
+    HE = sum(geo_he),
+    MV = sum(geo_mv),
+    NI = sum(geo_nds),
+    NW = sum(geo_nrw),
+    RP = sum(geo_rlp),
+    SL = sum(geo_sl),
+    SN = sum(geo_sn),
+    ST = sum(geo_st),
+    SH = sum(geo_sh),
+    TH = sum(geo_th)
+  ) %>%
+  pivot_longer(names_to = "ID", cols = everything(), values_to = "user_count")
+
+#####
+geo_stats_tweets <- geo_tweets %>%
+  summarize(
+    BW = sum(geo_bw, na.rm = TRUE),
+    BY = sum(geo_by, na.rm = TRUE),
+    BE = sum(geo_be, na.rm = TRUE),
+    BB = sum(geo_bb, na.rm = TRUE),
+    HB = sum(geo_hb, na.rm = TRUE),
+    HH = sum(geo_hh, na.rm = TRUE),
+    HE = sum(geo_he, na.rm = TRUE),
+    MV = sum(geo_mv, na.rm = TRUE),
+    NI = sum(geo_nds, na.rm = TRUE),
+    NW = sum(geo_nrw, na.rm = TRUE),
+    RP = sum(geo_rlp, na.rm = TRUE),
+    SL = sum(geo_sl, na.rm = TRUE),
+    SN = sum(geo_sn, na.rm = TRUE),
+    ST = sum(geo_st, na.rm = TRUE),
+    SH = sum(geo_sh, na.rm = TRUE),
+    TH = sum(geo_th, na.rm = TRUE)
+  ) %>%
+  pivot_longer(names_to = "ID", cols = everything(), values_to = "tweet_count")
+
+
+# merge with geo_data
+de_stats <- de %>%
+  left_join(geo_stats_users, by = join_by(ID == ID)) %>%
+  left_join(geo_stats_tweets, by = join_by(ID == ID))
+
+names(de_stats)
+class(de_stats)
+```
+
+## 4. Plots
+
+### Get centroid coordinates
+```{r}
+de_stats <- bind_cols(de_stats, st_coordinates(st_centroid(de_stats$geometry)))
+```
+
+```{r}
+# test <- de_stats %>% st_simplify(dTolerance = 10000)
+de_stats[de_stats$NUTS_NAME == "Brandenburg", "X"] <- 4570000
+de_stats[de_stats$NUTS_NAME == "Brandenburg", "Y"] <- 3200500
+```
+
+
+### Basic plots
+```{r}
+ggplot(data = de) +
+  geom_sf(color = "black", fill = "lightgrey") +
+  theme_void()
+
+de %>%
+  ggplot(aes(fill = NUTS_NAME)) +
+  geom_sf()
+
+pal <- c("#c1272d", "#0000a7", "#008176", "#eecc16")
+```
+
+### User Counts Map - Point
+```{r}
+ggplot(data = de_stats) +
+  geom_sf() +
+  geom_point(aes(size = user_count, x = X, y = Y), color = "#c1272d", alpha = 0.8) +
+  scale_size_continuous("Users", labels = scales::comma) +
+  theme_void(base_size = 12)
+
+ggsave(here::here("plots", "map_users.png"), height = 5, width = 4, dpi = 400)
+```
+
+### Tweet Counts Map - Point
+```{r}
+ggplot(data = de_stats) +
+  geom_sf() +
+  geom_point(aes(size = tweet_count, x = X, y = Y), color = "#0000a7", alpha = 0.8) +
+  scale_size_continuous("Tweets", labels = scales::comma) +
+  theme_void(base_size = 12)
+
+ggsave(here::here("plots", "map_tweets.png"), height = 5, width = 4, dpi = 400)
+```
+
+
+## More Stats
+```{r}
+geo_stats <- de_stats %>%
+  st_drop_geometry() %>%
+  as_tibble() %>%
+  select(state = NUTS_NAME, user_count, tweet_count) %>%
+  arrange(-user_count, -tweet_count)
+```
+
+### Population Stats
+```{r}
+# "https://www.demografie-portal.de/DE/Fakten/Daten/bevoelkerung-laender.csv"
+
+pop <- read_delim("data/Misc/bevoelkerung-laender.csv", delim = ";", skip = 8, col_names = c("state", "population"), col_select = 1:2)
+
+pop <- pop %>% mutate(state = state %>% str_replace("�", "ü"))
+```
+
+```{r}
+geo_stats <- geo_stats %>% left_join(pop)
+geo_stats <- geo_stats %>% mutate(
+  tweet_pro_pop = (tweet_count / population) * 10000,
+  users_pro_pop = (user_count / population) * 10000
+)
+
+geo_stats %>% clipr::write_clip()
+```
+
+
+## Validation Stats
+```{r}
+geo_dat <- all_split$dataset %>%
+  select(user_id, status_id, is_bot) %>%
+  left_join(geo_users, by = join_by(user_id == user_id))
+
+
+# Bots were removed from the start
+
+geo_users$user_location_clean %>% is.na() %>% sum()
+
+geo_users %>% 
+  select(user_location_clean) %>% 
+  filter(nchar(user_location_clean) < 3) %>% View()
+
+geo_users %>% 
+  filter(has_state == 0) %>% 
+  select(user_location_clean) %>% 
+  head(1000) %>% View()
+
+geo_users <- geo_users %>%
+  mutate(
+    has_state = rowSums(pick(
+      geo_bw, geo_by, geo_be, geo_bb, geo_hb, geo_hh, geo_he, geo_mv, geo_nds, geo_nrw, geo_rlp, geo_sl, geo_sn, geo_st, geo_sh, geo_th
+    ))
+  )
+
+geo_dat <- geo_dat %>%
+  mutate(
+    has_state = rowSums(pick(
+      geo_bw, geo_by, geo_be, geo_bb, geo_hb, geo_hh, geo_he, geo_mv, geo_nds, geo_nrw, geo_rlp, geo_sl, geo_sn, geo_st, geo_sh, geo_th
+    ))
+  )
+
+geo_dat %>% filter(has_state != 0) %>% nrow()
+geo_dat %>% filter(!is_bot) %>% nrow()
+
+geo_cover <- geo_users %>% count(has_state, sort = TRUE)
+
+geo_cover %>% clipr::write_clip()
+
+# find missing states
+geo_users %>% filter(has_state == 0) %>% select(user_location_clean) %>% head(1000) %>% View()
+# IDEA: include english translations for states!
+
+geo_users <- geo_users %>% hoist(geo_data, geo_country_match = "geo_country_match")
+geo_users %>% count(geo_country_match, sort = TRUE)
+# TODO: combine flag and match and rematch to single country!
+# -> report how many clearly germany or other country!
+
+# account for how many tweets were identified?
+
+
+# -> if not, I would also have to update the table and the plots...
+
+# check for how many the field was empty
+
+
+# check how many I was able to identify
+# how many fields are still unknown?
+```

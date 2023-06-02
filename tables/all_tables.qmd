@@ -1,0 +1,381 @@
+---
+title: "All Paper Tables"
+author: "Lennart Klein"
+format: html
+editor: 
+  markdown: 
+    wrap: 72
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+source(here::here("Tables", "table_utils.R"))
+```
+
+## Get the data
+
+```{r}
+# list of tibbles for each subsection
+all_split <- readRDS(here::here("data", "split_all_dat.rds"))
+```
+
+```{r}
+# get the splits by hashtag for each category
+state_split <- readRDS(here::here("data", "state_split.rds"))
+subject_split <- readRDS(here::here("data", "subject_split.rds"))
+TWLZ_split <- readRDS(here::here("data", "TWLZ_split.rds"))
+# chat split not needed
+```
+
+# Participation patterns in German Twitter Communities (RQ1)
+
+## Table 1: Overall statistics of all community types
+
+```{r}
+table1 <- all_split %>%
+  full_overview_table() %>%
+  format_table()
+table1
+table1 %>% clipr::write_clip()
+```
+
+## Tables 2: overall statistics for subject and states and TWLZ + hashtag-based subcommunities
+
+### Table 2.1 Main Overall Statistics SUBJECTS - Report
+
+```{r}
+tab2.1_subjects <- subject_split %>%
+  generate_table_main() %>% # MAIN = only categories, not hashtags
+  format_table()
+tab2.1_subjects %>% clipr::write_clip()
+```
+
+### Table 2.1 Full Overall Statistics SUBJECTS - Appendix
+
+```{r}
+tab2.1_subject_app <- subject_split %>%
+  generate_table_complete() %>% # COMPLETE = categories and also all sub-hashtags
+  format_table()
+tab2.1_subject_app %>% clipr::write_clip()
+```
+
+### Table 2.2 Overall Statistics STATES - Report
+
+```{r}
+tab2.1_states <- state_split %>%
+  generate_table_main() %>%
+  drop_na() %>%
+  format_table()
+tab2.1_states %>% clipr::write_clip()
+```
+
+### Table 2.1 Full Overall Statistics STATES - Appendix
+
+```{r}
+tab2.1_states_app <- state_split %>%
+  generate_table_complete() %>%
+  drop_na() %>%
+  format_table()
+tab2.1_states_app %>% clipr::write_clip()
+```
+
+### Table 2.3 Overall Statistics TWLZ
+
+```{r}
+tab2.3 <- TWLZ_split %>%
+  generate_table_complete() %>%
+  format_table()
+tab2.3 <- tab2.3 %>% arrange(desc(N_all_tweets))
+
+tab2.3 %>% clipr::write_clip()
+```
+
+## Tables/Figures 3: **User types in communities**
+
+```{r}
+# Table 3; overall statistics for user types (teacher, bot, non-bot-non-teacher)
+# N Teacher – number of all teachers
+# N bots – number of
+# N non-bot, non-teacher – number of
+
+dat %>%
+  distinct(user_id, .keep_all = TRUE) %>%
+  count(is_teacher, is_bot) %>%
+  clipr::write_clip()
+
+
+dat %>%
+  distinct(user_id, .keep_all = TRUE) %>%
+  filter(is_teacher & is_bot) %>%
+  pull(user_id) %>%
+  dput()
+
+
+# Figure
+
+# case_when user_type
+
+# ⇒ pie chart or bar plot, stacked for user class
+#
+# N All Tweets (teacher,) - every tweet
+# N All Tweets (, bot,) - every tweet in this hashtag
+# N All Tweets (non-bot, non-teach) - every tweet in this hashtag
+#
+# Same for these, split in three groups:
+# N Original Tweets (teacher, bot, non-bot) - not replies, retweets, or quotes
+# N Reposts  (teacher, bot, non-bot) – number of retweets + quotes
+# N Replies (teacher, bot, non-bot)  – number of replies (conversations can also include quotes!)
+```
+
+```{r}
+dat <- dat %>%
+  mutate(
+    user_class = case_when(
+      is_bot ~ "Bot",
+      is_teacher ~ "Teacher",
+      !is_bot & !is_teacher ~ "Other",
+      TRUE ~ NA_character_
+    )
+  )
+
+
+add_user_class <- function(dat) {
+  dat <- dat %>%
+    mutate(
+      user_class = case_when(
+        is_bot ~ "Bot",
+        is_teacher ~ "Teacher",
+        !is_bot & !is_teacher ~ "Other",
+        TRUE ~ NA_character_
+      )
+    )
+  return(dat)
+}
+```
+
+```{r}
+user_class_count <- dat %>%
+  distinct(user_id, .keep_all = TRUE) %>%
+  count(user_class) %>%
+  arrange(n)
+user_class_count %>% clipr::write_clip()
+
+user_class_count <- dat %>%
+  distinct(user_id, .keep_all = TRUE) %>%
+  count(user_class)
+
+
+user_class_count <- user_class_count %>%
+  arrange(desc(user_class)) %>%
+  mutate(prop = n / sum(user_class_count$n) * 100) %>%
+  mutate(ypos = cumsum(prop) - 0.5 * prop)
+
+ggplot(user_class_count, aes(x = "", y = prop, fill = user_class)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y", start = 0) +
+  theme_void() +
+  theme(legend.position = "none") +
+  geom_text(aes(y = ypos, label = user_class), color = "white", size = 6) +
+  scale_fill_brewer(palette = "Set1")
+
+ggsave(here::here("Plots", "user_tweets.png"), height = 5, width = 5)
+```
+
+### User Counts
+
+```{r}
+stats <- all_split %>% map(~ .x %>%
+  distinct(user_id, .keep_all = TRUE) %>%
+  add_user_class() %>%
+  count(user_class) %>%
+  pull(n))
+
+# Bot - Other - Teacher
+
+combined <- tibble(user_class = c("Bot", "Other", "Teacher")) %>% bind_cols(stats)
+combined %>% clipr::write_clip()
+```
+
+## Remove Bots!
+
+```{r}
+dat %>%
+  distinct(user_id, .keep_all = TRUE) %>%
+  count(is_teacher, is_bot)
+```
+
+## Part 5: **Engagement and sentiment variables**
+
+M_reposts_per_tweet -- M_q95_reposts_per_tweet -- SD_reposts_per_tweet
+-- M_likes_per_tweet -- M_q95_likes_per_tweet -- SD_likes_per_tweet --
+M_conversation_length -- -\> average senti score!! (Sentiment Ratio)
+
+### Social + Sentiment - All Users
+
+**Table 4.** Descriptives of engagement and sentiment stats for all community types for all users, excluding retweets and bots. 
+```{r}
+social1 <- all_split %>%
+  generate_social_table_main(drop_bots = TRUE, drop_retweets = TRUE) %>%
+  format_table()
+
+social1 %>% clipr::write_clip()
+
+# pos = 0+
+# neg = -0
+
+# if neutral or positive = 1
+# if negative = 0
+sws_binary = ifelse(sum(wert)>=0, 1, 0),
+
+
+# all_split$chats %>% count(sws_binary)
+# all_split$chats %>% count(sws_trinary)
+# Senti trinary and binary don't really make a diff
+
+# d['senti_final'] <- ifelse(is.na(d$sws_trinary), 0, d$sws_trinary)
+
+all_split$chats %>% count(senti_final)
+
+test <- all_split$chats %>% mutate(
+  senti_final_f = senti_final %>% recode(
+  "-1" = "negative",
+  "0" = "positive/neutral"
+)
+)
+
+tab <- test$senti_final_f %>% table()
+tab["negative"]
+
+
+test %>% 
+  pull(senti_final_f) %>% 
+  table() %>%  
+  (function(tab) {
+          tab["negative"] / tab["positive/neutral"]
+        })
+
+
+test %>% 
+  pull(senti_final) %>% 
+  table() %>%  
+  (function(tab) {
+          tab["-1"] / tab["0"] # neg / pos 
+        })
+
+
+
+test %>% 
+  pull(senti_final) %>% 
+ (function(x){return(x != -1)}) %>%
+ (function(x){return(sum(!x)/sum(x))})
+
+
+as.logical() %>% # -1 wird zu TRUE, 0 zu FALSE
+        (function(x) {
+          sum(!x) / sum(x) # pos / neg
+        })
+
+
+-1  negative
+0 positive/neutral
+
+al
+
+
+```
+
+# Social Teachers
+
+```{r}
+social_teachers <- all_split %>%
+  generate_social_table_main(teachers_only = TRUE) %>%
+  format_table()
+
+social_teachers %>% clipr::write_clip()
+```
+
+### Social + Sentiment - Teachers (no bots)
+
+### Conversations
+
+**Table 7.** Conversation statistics across community types across **all users**.
+```{r}
+conv_tab <- all_split %>%
+  generate_conv_table_main(teachers_only = FALSE, non_teachers = FALSE)
+
+conv_tab <- conv_tab %>% mutate(
+  # M_conv_halflife_clean = M_conv_halflife %>% seconds_to_period() %>% lubridate::hm()
+  # M_conv_responsivity_hour = as.numeric(M_conv_responsivity) / 60 / 60 # get hours
+  M_conv_halflife_hours = as.numeric(M_conv_halflife) / 60 / 60, # get hours
+  SD_conv_halflife_hours = as.numeric(SD_conv_halflife) / 60 / 60 # get hours
+)
+
+conv_tab_final <- conv_tab %>% 
+  format_table() %>% 
+  transmute(
+    Category = c("TWLZ", "EdChatDE", "Subjects", "States", "Overall"),
+    conv_lengths = str_glue("{M_conv_length} ({SD_conv_length})"),
+    conv_users = str_glue("{M_conv_users} ({SD_conv_users})"),
+    conv_mentions = str_glue("{M_conv_mentions_count} ({SD_conv_mentions_count})"),
+    conv_halflife_hours = str_glue("{M_conv_halflife_hours} ({SD_conv_halflife_hours})")
+  )
+
+conv_tab_final %>% clipr::write_clip()
+
+
+## List of all available conv stats
+# tibble(names = dat %>% select(contains("conv_")) %>% names()) %>% clipr::write_clip()
+```
+
+# **Twitter as on an online community of practice (RQ2)**
+
+\
+
+# Comparison Tables of Teacher vs. Non-Teacher
+
+```{r}
+group_stats <- all_split %>% comparison_table_clean(var = "like_count")
+group_stats_final %>% clipr::write_clip()
+```
+
+
+```{r}
+group_stats <- group_stats %>%
+  rowwise() %>%
+  mutate(
+    sd_pooled = sqrt(((n1 - 1) * sd1^2 + (n2 - 1) * sd2^2) / (n1 + n2 - 2)),
+    cohens_d = abs(mean1 - mean2) / sd_pooled
+  ) %>%
+  ungroup()
+
+group_stats_final <- group_stats %>%
+  transmute(
+    Category = Category,
+    M_likes_per_tweet_teacher =
+      paste0(
+        round(mean1, 2),
+        " (", round(sd1, 2), ")"
+      ),
+    M_likes_per_tweet_non_teacher =
+      paste0(
+        round(mean2, 2),
+        " (", round(sd2, 2), ")"
+      ),
+    cohens_d = cohens_d %>% round(3)
+  )
+
+group_stats_final %>% clipr::write_clip()
+```
+
+```{r}
+```
+
+
+
+# Difference in the number of tweets
+```{r}
+test <- all_split$chats
+```

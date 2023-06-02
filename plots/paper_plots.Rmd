@@ -1,0 +1,663 @@
+---
+title: 'Paper Plots'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(colorBlindness)
+```
+
+```{r data}
+all_split <- readRDS(here::here("data", "split_all_dat.rds"))
+```
+
+```{r bots}
+# all_split <- all_split %>% map(~ .x %>% filter(!is_bot))
+test <- readRDS(here::here("data", "all_chats.rds"))
+```
+
+
+# Plots
+## Time-series - Tweets (non-log, all users)
+```{r}
+# FIXME: What about overlap?
+twlz_stat_tweets <- all_split$twlz %>%
+  count(year) %>%
+  mutate(community = "TWLZ")
+
+chats_stat_tweets <- all_split$chats %>%
+  count(year) %>%
+  mutate(community = "EdChatDE")
+
+subjects_stat_tweets <- all_split$subjects %>%
+  count(year) %>%
+  mutate(community = "Subjects")
+
+states_stat_tweets <- all_split$states %>%
+  count(year) %>%
+  mutate(community = "States")
+
+time_stat_tweets <- bind_rows(twlz_stat_tweets, chats_stat_tweets, subjects_stat_tweets, states_stat_tweets)
+
+time_stat_tweets <- time_stat_tweets %>%
+  mutate(
+    year = year %>% as.numeric()
+  )
+
+# add zero points one year before community started
+zero_points <- time_stat_tweets %>%
+  group_by(community) %>%
+  summarise(year = min(year)) %>%
+  mutate(
+    n = 0,
+    year = year - 1
+  )
+
+time_stat_tweets <- time_stat_tweets %>%
+  bind_rows(zero_points) %>%
+  arrange(year) %>%
+  mutate(
+    # change order, like tables
+    community = community %>% factor(level = c("TWLZ", "EdChatDE", "Subjects", "States"))
+  )
+
+
+communities <- c("TWLZ", "EdChatDE", "Subjects", "States")
+```
+
+```{r}
+pal <- c("#c1272d", "#0000a7", "#008176", "#eecc16")
+# all_years <- all_split$dataset %>%
+#   # filter(!is_teacher) %>%
+#   # filter(!is_bot) %>%
+#   count(year) %>%
+#   add_row(year = "2007", n = 0) %>%
+#   arrange(year)
+```
+
+```{r}
+
+time_stat_tweets <- time_stat_tweets %>% 
+  mutate(
+    n_scaled = n / 100000
+  )
+
+900000 / 100000
+
+year_labels <- as.character(seq(2004, 2022, 1))
+year_labels[c(FALSE, TRUE)] <- ""
+
+seq(0, 10, 2.5)
+
+
+plot_log_tweets <- time_stat_tweets %>%
+  ggplot(aes(x = year, y = n_scaled, color = community)) +
+  geom_line(linewidth = 0.75) +
+  scale_color_manual(values = pal) +
+  scale_x_continuous(
+    limits = c(2006, 2022),
+    breaks = seq(2004, 2022, 1),
+    labels = year_labels
+  ) +
+  scale_y_continuous(breaks = )
+  labs(y = "Tweets (in 100,000)", x = "") +
+  papaja::theme_apa(box = TRUE) +
+  theme(axis.title.y = element_text(margin = margin(r = 3, unit = "pt"))) +
+  theme(axis.title.x = element_blank()) +
+  theme(
+    legend.position = "bottom", legend.title = element_blank(),
+    legend.margin = margin(t = -2, unit = "pt")
+  )
+
+ggview::ggview(height = 4, width = 6)
+ggsave(filename = here::here("plots", "log_tweets_all_users.png"), height = 4, width = 6)
+```
+
+
+
+## Time-series - Tweets (Non-Teacher)
+```{r}
+# FIXME: What about overlap?
+twlz_stat_tweets <- all_split$twlz %>%
+  filter(!is_teacher) %>%
+  filter(!is_bot) %>%
+  count(year) %>%
+  mutate(community = "TWLZ")
+
+chats_stat_tweets <- all_split$chats %>%
+  filter(!is_teacher) %>%
+  filter(!is_bot) %>%
+  count(year) %>%
+  mutate(community = "EdChatDE")
+
+subjects_stat_tweets <- all_split$subjects %>%
+  filter(!is_teacher) %>%
+  filter(!is_bot) %>%
+  count(year) %>%
+  mutate(community = "Subjects")
+
+states_stat_tweets <- all_split$states %>%
+  filter(!is_teacher) %>%
+  filter(!is_bot) %>%
+  count(year) %>%
+  mutate(community = "States")
+
+time_stat_tweets <- bind_rows(twlz_stat_tweets, chats_stat_tweets, subjects_stat_tweets, states_stat_tweets)
+
+time_stat_tweets <- time_stat_tweets %>%
+  mutate(
+    year = year %>% as.numeric()
+  )
+
+# add zero points one year before community started
+zero_points <- time_stat_tweets %>%
+  group_by(community) %>%
+  summarise(year = min(year)) %>%
+  mutate(
+    n = 0,
+    year = year - 1
+  )
+
+time_stat_tweets <- time_stat_tweets %>%
+  bind_rows(zero_points) %>%
+  arrange(year) %>%
+  mutate(
+    # change order, like tables
+    community = community %>% factor(level = c("TWLZ", "EdChatDE", "Subjects", "States"))
+  )
+
+
+communities <- c("TWLZ", "EdChatDE", "Subjects", "States")
+```
+
+```{r}
+# ?scales::viridis_pal
+library(ggsci)
+
+pal <- viridis::viridis(4)
+colorBlindness::displayAllColors(pal)
+
+capabilities()
+
+# c("TWLZ", "EdChatDE", "Subjects", "States"))
+
+
+scales::show_col(pal_npg("nrc")(10))
+
+displayAvailablePalette(color = "white")
+displayAllColors(safeColors, color = "white")
+
+displayAllColors(SteppedSequential5Steps)
+
+pal <- SteppedSequential5Steps[c(1, 11, 16, 21)]
+displayAllColors(pal)
+
+pal <- c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c")
+pal <- c("#e66101", "#fdb863", "#b2abd2", "#5e3c99")
+
+# https://www.simplifiedsciencepublishing.com/resources/best-color-palettes-for-scientific-figures-and-data-visualizations
+
+# "#b3b3b3")
+pal <- c("#c1272d", "#0000a7", "#008176", "#eecc16")
+displayAllColors(pal)
+```
+
+```{r}
+all_years <- all_split$dataset %>%
+  # filter(!is_teacher) %>%
+  # filter(!is_bot) %>%
+  count(year) %>%
+  add_row(year = "2007", n = 0) %>%
+  arrange(year)
+```
+
+```{r}
+year_labels <- as.character(seq(2004, 2022, 1))
+year_labels[c(FALSE, TRUE)] <- ""
+
+plot_log_tweets <- all_years %>%
+  ggplot(aes(x = year, y = n, color = community)) +
+  geom_line(linewidth = 0.75) +
+  scale_color_manual(values = pal) +
+  scale_x_continuous(
+    limits = c(2006, 2022),
+    breaks = seq(2004, 2022, 1),
+    labels = year_labels
+  ) +
+  # scale_y_log10(
+  #   breaks = scales::breaks_log(6),
+  #   labels = scales::label_log()
+  # ) +
+  labs(y = expression(paste("Non-Teacher Tweets ", (log[10])))) +
+  papaja::theme_apa(box = TRUE) +
+  theme(axis.title.y = element_text(margin = margin(r = 3, unit = "pt"))) +
+  theme(axis.title.x = element_blank()) +
+  theme(
+    legend.position = "bottom", legend.title = element_blank(),
+    legend.margin = margin(t = -2, unit = "pt")
+  )
+
+ggview::ggview(height = 4, width = 6)
+ggsave(filename = here::here("plots", "log_tweets.png"), height = 4, width = 6)
+```
+
+
+
+```{r}
+year_labels <- as.character(seq(2004, 2022, 1))
+year_labels[c(FALSE, TRUE)] <- ""
+
+plot_log_tweets <- time_stat_tweets %>%
+  ggplot(aes(x = year, y = n, color = community)) +
+  geom_line(linewidth = 0.75) +
+  scale_color_manual(values = pal) +
+  scale_x_continuous(
+    limits = c(2006, 2022),
+    breaks = seq(2004, 2022, 1),
+    labels = year_labels
+  ) +
+  scale_y_log10(
+    breaks = scales::breaks_log(6),
+    labels = scales::label_log()
+  ) +
+  labs(y = expression(paste("Non-Teacher Tweets ", (log[10])))) +
+  papaja::theme_apa(box = TRUE) +
+  theme(axis.title.y = element_text(margin = margin(r = 3, unit = "pt"))) +
+  theme(axis.title.x = element_blank()) +
+  theme(
+    legend.position = "bottom", legend.title = element_blank(),
+    legend.margin = margin(t = -2, unit = "pt")
+  )
+
+ggview::ggview(height = 4, width = 6)
+ggsave(filename = here::here("plots", "log_tweets.png"), height = 4, width = 6)
+```
+
+
+```{r}
+check_plot <- colorBlindness::cvdPlot(plot_log_tweets)
+ggview::ggview(width = 12, height = 8)
+
+ggsave(check_plot, filename = here::here("plots", "check_plot.png"), width = 12, height = 8)
+```
+
+
+## Time-series - Users
+```{r}
+twlz_stat_users <- all_split$twlz %>%
+  filter(!is_teacher) %>%
+  filter(!is_bot) %>%
+  group_by(year) %>%
+  summarise(
+    n_users = user_id %>% n_distinct()
+  ) %>%
+  mutate(community = "TWLZ")
+
+chats_stat_users <- all_split$chats %>%
+  filter(!is_teacher) %>%
+  filter(!is_bot) %>%
+  group_by(year) %>%
+  summarise(
+    n_users = user_id %>% n_distinct()
+  ) %>%
+  mutate(community = "EdChatDE")
+
+subjects_stat_users <- all_split$subjects %>%
+  filter(!is_teacher) %>%
+  filter(!is_bot) %>%
+  group_by(year) %>%
+  summarise(
+    n_users = user_id %>% n_distinct()
+  ) %>%
+  mutate(community = "Subjects")
+
+states_stat_users <- all_split$states %>%
+  filter(!is_teacher) %>%
+  filter(!is_bot) %>%
+  group_by(year) %>%
+  summarise(
+    n_users = user_id %>% n_distinct()
+  ) %>%
+  mutate(community = "States")
+
+time_stat_users <- bind_rows(twlz_stat_users, chats_stat_users, subjects_stat_users, states_stat_users)
+
+time_stat_users <- time_stat_users %>%
+  mutate(
+    year = year %>% as.numeric()
+  ) %>%
+  arrange(year)
+
+
+# zero points one year before community started
+zero_points_users <- time_stat_users %>%
+  group_by(community) %>%
+  summarise(year = min(year)) %>%
+  mutate(
+    n_users = 0,
+    year = year - 1
+  )
+
+time_stat_users <- time_stat_users %>%
+  bind_rows(zero_points_users) %>%
+  arrange(year) %>%
+  mutate(
+    # change order, like tables
+    community = community %>% factor(level = c("TWLZ", "EdChatDE", "Subjects", "States"))
+  )
+```
+
+
+```{r}
+year_labels <- as.character(seq(2004, 2022, 1))
+year_labels[c(FALSE, TRUE)] <- ""
+
+plot_log_users <- time_stat_users %>%
+  ggplot(aes(x = year, y = n_users, color = community)) +
+  geom_line(linewidth = 0.75) +
+  scale_color_manual(values = pal) +
+  scale_x_continuous(
+    limits = c(2006, 2022),
+    breaks = seq(2004, 2022, 1),
+    labels = year_labels
+  ) +
+  scale_y_log10(
+    breaks = scales::breaks_log(6),
+    labels = scales::label_log()
+  ) +
+  labs(y = expression(paste("Non-Teachers ", (log[10])))) +
+  papaja::theme_apa(box = TRUE) +
+  theme(axis.title.y = element_text(margin = margin(r = 3, unit = "pt"))) +
+  theme(axis.title.x = element_blank()) +
+  theme(
+    legend.position = "bottom", legend.title = element_blank(),
+    legend.margin = margin(t = -2, unit = "pt")
+  )
+
+ggsave(filename = here::here("plots", "log_users.png"), height = 4, width = 6)
+```
+
+
+```{r}
+# Stack plots, same legend
+# g_stacked <-
+# plot_log_tweets +
+#   ggpubr::rremove("x.text") +
+#   ggpubr::rremove("x.ticks") +
+#   theme(plot.margin = margin(b = -10))
+
+non_teacher_stack <- ggpubr::ggarrange(
+  plot_log_tweets +
+    ggpubr::rremove("x.text") +
+    ggpubr::rremove("x.ticks"),
+  plot_log_users,
+  ncol = 1, nrow = 2, common.legend = TRUE, legend = "bottom"
+)
+
+
+ggview::ggview(height = 6, width = 6)
+
+# FIXME:device = cairo_pdf
+ggsave(non_teacher_stack, here::here("plots", "log_stacked_nobots.png"),
+  dpi = 300,
+  height = 6, width = 6
+)
+```
+
+### Teacher Plots
+
+## Time-series - Tweets
+```{r}
+twlz_stat_tweets <- all_split$twlz %>%
+  filter(is_teacher) %>%
+  filter(!is_bot) %>%
+  count(year) %>%
+  mutate(community = "TWLZ")
+
+chats_stat_tweets <- all_split$chats %>%
+  filter(is_teacher) %>%
+  filter(!is_bot) %>%
+  count(year) %>%
+  mutate(community = "EdChatDE")
+
+subjects_stat_tweets <- all_split$subjects %>%
+  filter(is_teacher) %>%
+  filter(!is_bot) %>%
+  count(year) %>%
+  mutate(community = "Subjects")
+
+states_stat_tweets <- all_split$states %>%
+  filter(is_teacher) %>%
+  filter(!is_bot) %>%
+  count(year) %>%
+  mutate(community = "States")
+
+time_stat_tweets <- bind_rows(twlz_stat_tweets, chats_stat_tweets, subjects_stat_tweets, states_stat_tweets)
+
+time_stat_tweets <- time_stat_tweets %>%
+  mutate(
+    year = year %>% as.numeric()
+  )
+
+# zero points one year before community started
+zero_points <- time_stat_tweets %>%
+  group_by(community) %>%
+  summarise(year = min(year)) %>%
+  mutate(
+    n = 0,
+    year = year - 1
+  )
+
+time_stat_tweets <- time_stat_tweets %>%
+  bind_rows(zero_points) %>%
+  arrange(year) %>%
+  mutate(
+    # change order, like tables
+    community = community %>% factor(level = c("TWLZ", "EdChatDE", "Subjects", "States"))
+  )
+```
+
+```{r}
+### Tweets
+plot_log_teacher_tweets <- time_stat_tweets %>%
+  ggplot(aes(x = year, y = n, color = community)) +
+  geom_line(linewidth = 0.75) +
+  scale_color_manual(values = pal) +
+  scale_x_continuous(
+    limits = c(2006, 2022),
+    breaks = seq(2004, 2022, 1),
+    labels = year_labels
+  ) +
+  scale_y_log10(
+    breaks = scales::breaks_log(6),
+    labels = scales::label_log()
+  ) +
+  labs(y = expression(paste("Teacher Tweets ", (log[10])))) +
+  papaja::theme_apa(box = TRUE) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(margin = margin(r = 3, unit = "pt")),
+    legend.position = "bottom", legend.title = element_blank(),
+    legend.margin = margin(t = -2, unit = "pt")
+  )
+
+
+ggsave(filename = here::here("plots", "log_teacher_tweets.png"), height = 4, width = 6)
+```
+
+### Teacher Users
+
+```{r}
+twlz_stat_users <- all_split$twlz %>%
+  filter(is_teacher) %>%
+  filter(!is_bot) %>%
+  group_by(year) %>%
+  summarise(
+    n_users = user_id %>% n_distinct()
+  ) %>%
+  mutate(community = "TWLZ")
+
+chats_stat_users <- all_split$chats %>%
+  filter(is_teacher) %>%
+  filter(!is_bot) %>%
+  group_by(year) %>%
+  summarise(
+    n_users = user_id %>% n_distinct()
+  ) %>%
+  mutate(community = "EdChatDE")
+
+subjects_stat_users <- all_split$subjects %>%
+  filter(is_teacher) %>%
+  filter(!is_bot) %>%
+  group_by(year) %>%
+  summarise(
+    n_users = user_id %>% n_distinct()
+  ) %>%
+  mutate(community = "Subjects")
+
+states_stat_users <- all_split$states %>%
+  filter(is_teacher) %>%
+  filter(!is_bot) %>%
+  group_by(year) %>%
+  summarise(
+    n_users = user_id %>% n_distinct()
+  ) %>%
+  mutate(community = "States")
+
+time_stat_users <- bind_rows(twlz_stat_users, chats_stat_users, subjects_stat_users, states_stat_users)
+
+time_stat_users <- time_stat_users %>%
+  mutate(
+    year = year %>% as.numeric()
+  ) %>%
+  arrange(year)
+
+
+# zero points one year before community started
+zero_points_users <- time_stat_users %>%
+  group_by(community) %>%
+  summarise(year = min(year)) %>%
+  mutate(
+    n_users = 0,
+    year = year - 1
+  )
+
+time_stat_users <- time_stat_users %>%
+  bind_rows(zero_points_users) %>%
+  arrange(year) %>%
+  mutate(
+    # change order, like tables
+    community = community %>% factor(level = c("TWLZ", "EdChatDE", "Subjects", "States"))
+  )
+```
+
+
+```{r}
+### Users
+plot_log_teachers <- time_stat_users %>%
+  ggplot(aes(x = year, y = n_users, color = community)) +
+  geom_line(linewidth = 0.75) +
+  scale_color_manual(values = pal) +
+  scale_x_continuous(
+    limits = c(2006, 2022),
+    breaks = seq(2004, 2022, 1),
+    labels = year_labels
+  ) +
+  scale_y_log10(
+    breaks = scales::breaks_log(6),
+    labels = scales::label_log()
+  ) +
+  labs(y = expression(paste("Teachers ", (log[10])))) +
+  papaja::theme_apa(box = TRUE) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(margin = margin(r = 3, unit = "pt")),
+    legend.position = "bottom", legend.title = element_blank(),
+    legend.margin = margin(t = -2, unit = "pt")
+  )
+
+ggsave(filename = here::here("plots", "log_teachers.png"), height = 4, width = 6)
+```
+
+```{r}
+teacher_stack <- ggpubr::ggarrange(
+  plot_log_teacher_tweets +
+    ggpubr::rremove("x.text") +
+    ggpubr::rremove("x.ticks"),
+  plot_log_teachers,
+  ncol = 1, nrow = 2, common.legend = TRUE, legend = "bottom"
+)
+
+ggsave(plot = teacher_stack, filename = "log_teacher_stacked.png", height = 6, width = 6)
+```
+
+```{r}
+ggpubr::ggarrange(
+  plot_log_teacher_tweets +
+    ggpubr::rremove("x.text") +
+    ggpubr::rremove("x.ticks"),
+  plot_log_tweets +
+    ggpubr::rremove("x.text") +
+    ggpubr::rremove("x.ticks"),
+  plot_log_teachers,
+  plot_log_users,
+  ncol = 2, nrow = 2, common.legend = TRUE, legend = "bottom"
+)
+
+ggview::ggview(width = 12, height = 6)
+ggsave(here::here("plots", "all_log_stacked.png"),
+  height = 6, width = 12, dpi = 300
+)
+```
+
+## Participation scatterplot
+```{r}
+all_split$dataset <- all_split$dataset %>%
+  group_by(user_id) %>%
+  mutate(
+    user_tweet_count = n()
+  ) %>%
+  ungroup() # to remove grouped_df class
+# CHECK: Correct!
+
+###
+# FIXME: round up lifespan to at least 1 day!
+
+all_split$dataset <- all_split$dataset %>%
+  group_by(user_id) %>%
+  mutate(
+    user_lifespan_days = difftime(max(created_at), min(created_at), units = "days") %>%
+      round(digits = 0) %>% # round to full days
+      as.numeric() %>% if_else(. == 0, 1, .) # have at least one day, if only one tweet
+  ) %>%
+  ungroup() # to remove grouped_df class
+```
+
+```{r user participation scatterplot}
+# FIXME: excluding bots!
+# all_split$dataset %>%
+# group_by(user_id) %>%
+# mutate()
+
+all_split$dataset$user_tweets_per_day %>%
+  is.na() %>%
+  sum()
+all_split$dataset$user_lifespan_days %>% table()
+
+user_sample <- all_split$dataset %>%
+  distinct(user_id, .keep_all = TRUE) %>% # Users only
+  select(user_lifespan_days, user_tweets_per_day) %>%
+  drop_na()
+# filter(user_tweets_per_day < quantile(user_tweets_per_day, probs = 0.75)) %>%
+# sample_n(100000)
+
+set.seed(42)
+# ggplot(aes(x = user_tweets_per_day, y = user_lifespan_days)) +
+# geom_jitter(shape = ".") +
+# labs(x = "Frequency of participation [Tweets/day]", y = "User Lifespan [Days]") +
+# papaja::theme_apa()) %>% ggview::ggview(., height = 5, width = 7)
+
+ggsave("social_freq.png", height = 5, width = 7)
+```

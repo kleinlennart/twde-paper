@@ -1,0 +1,459 @@
+---
+title: 'Paper Plots'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+```
+
+```{r data}
+all_split <- readRDS(here::here("data", "splits_only_dat.rds"))
+```
+
+```{r}
+# helper function
+add_user_class <- function(dat) {
+  dat %>%
+    mutate(
+      user_class = case_when(
+        is_bot ~ "Bot",
+        is_teacher ~ "Teacher",
+        !is_bot & !is_teacher ~ "Non-teacher",
+        TRUE ~ NA_character_
+      ) %>% factor(levels = c("Teacher", "Non-teacher", "Bot"))
+    )
+}
+```
+
+# Clock Plots
+https://ggplot2-book.org/coord.html#polar-coordinates-with-coord_polar
+## Hours
+
+### Absolute Hour Values
+```{r}
+# without bots!
+twlz_hours <- all_split$twlz %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(hour = created_at_DE %>% lubridate::hour()) %>%
+  count(hour, user_class) %>%
+  mutate(community = "TWLZ")
+
+chats_hours <- all_split$chats %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(hour = created_at_DE %>% lubridate::hour()) %>%
+  count(hour, user_class) %>%
+  mutate(community = "EdChatDE")
+
+subjects_hours <- all_split$subjects %>%
+  filter(!str_detect(all_hashtags_str, "#relichat")) %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(hour = created_at_DE %>% lubridate::hour()) %>%
+  count(hour, user_class) %>%
+  mutate(community = "Subjects")
+
+states_hours <- all_split$states %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(hour = created_at_DE %>% lubridate::hour()) %>%
+  count(hour, user_class) %>%
+  mutate(community = "States")
+
+all_hours <- bind_rows(twlz_hours, chats_hours, subjects_hours, states_hours) %>%
+  mutate(
+    community = community %>% factor(level = c("TWLZ", "EdChatDE", "Subjects", "States"))
+    # user_class = user_class %>%
+    #   recode("Other" = "Non-Teacher") %>%
+    #   factor(levels = c("Non-Teacher", "Teacher"))
+  )
+
+
+```
+
+
+### Relative Hour Values
+```{r}
+# without bots!
+twlz_hours <- all_split$twlz %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(hour = created_at_DE %>% lubridate::hour()) %>%
+  group_by(user_class, hour) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(community = "TWLZ")
+
+chats_hours <- all_split$chats %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(hour = created_at_DE %>% lubridate::hour()) %>%
+  group_by(user_class, hour) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(freq = freq / 10) %>% # scaling
+  mutate(community = "EdChatDE")
+
+subjects_hours <- all_split$subjects %>%
+  filter(!str_detect(all_hashtags_str, "#relichat")) %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(hour = created_at_DE %>% lubridate::hour()) %>%
+  group_by(user_class, hour) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  # mutate(freq = freq * 10) %>%
+  mutate(community = "Subjects")
+
+states_hours <- all_split$states %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(hour = created_at_DE %>% lubridate::hour()) %>%
+  group_by(user_class, hour) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(community = "States")
+
+all_hours <- bind_rows(twlz_hours, chats_hours, subjects_hours, states_hours) %>%
+  mutate(
+    community = community %>% factor(level = c("TWLZ", "EdChatDE", "Subjects", "States"))
+    # user_class = user_class %>%
+    #   recode("Other" = "Non-Teacher") %>%
+    #   factor(levels = c("Teacher", "Non-Teacher"))
+  )
+
+all_hours %>% count(user_class)
+```
+
+## Reversed clock
+```{r hours clock grid}
+# cp <- coord_polar(theta = "y")
+# cp$is_free <- function() TRUE
+
+(all_hours %>%
+  ggplot(aes(x = hour, y = freq)) +
+  geom_bar(stat = "identity", just = 0, width = 1, color = "white") + # just = 0 keeps 0 on top!!
+  scale_x_continuous(breaks = 0:23, labels = as.character(0:23), expand = c(0, 0)) +
+  # scale_y_continuous(NULL, expand = c(0, 0)) +
+  coord_polar(start = 0, direction = 1) + # start = 0 for just = 0
+  # ylim(-.01, NA) +
+  labs(x = NULL, y = NULL) +
+  facet_grid(user_class ~ community, switch = "y", ) +
+  # theme_light() +
+  theme_bw(base_size = 14) +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    # panel.grid.major = element_blank(), #  scale_y_continuous(minor_breaks)
+    strip.text = element_text(size = 18, face = "bold") # facet grid labels
+  )
+) %>% ggview::ggview(., width = 20, height = 12)
+
+ggsave(here::here("plots", "grid_clocks_hours_wide.png"), width = 20, height = 12, dpi = 600)
+```
+
+
+```{r}
+# NOTE: wihout bots, remove first!
+TWLZ_stats <- all_split$twlz %>%
+  mutate(hour = created_at_DE %>% lubridate::hour()) %>%
+  count(hour)
+
+# 15 degrees per tick
+# axis.text.x = element_text(margin = margin(t = 0, r = 0, b = 0, l = 0))
+
+(TWLZ_stats %>%
+  ggplot(aes(x = hour, y = n)) +
+  geom_bar(stat = "identity", just = 0, width = 1) + # just = 0 keeps 0 on top!!
+  scale_x_continuous(breaks = 0:23, labels = as.character(0:23), expand = c(0, 0)) +
+  # scale_y_continuous(NULL, expand = c(0, 0)) +
+  coord_polar(start = 0, direction = 1) + # start = 0 for just = 0
+  labs(x = NULL, y = NULL) +
+  theme_light() +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+) %>% ggview::ggview(., width = 5, height = 5)
+
+ggsave(filename = "TWLZ_clock.png", width = 5, height = 5)
+```
+
+
+## Weekdays
+```{r}
+# without bots!
+twlz_week <- all_split$twlz %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(weekday = created_at_DE %>%
+    lubridate::wday(week_start = 1, label = TRUE, locale = "en_US")) %>%
+  group_by(user_class, weekday) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(community = "TWLZ")
+
+chats_week <- all_split$chats %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(weekday = created_at_DE %>%
+    lubridate::wday(week_start = 1, label = TRUE, locale = "en_US")) %>%
+  group_by(user_class, weekday) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(community = "EdChatDE")
+
+subjects_week <- all_split$subjects %>%
+  filter(!str_detect(all_hashtags_str, "#relichat")) %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(weekday = created_at_DE %>%
+    lubridate::wday(week_start = 1, label = TRUE, locale = "en_US")) %>%
+  group_by(user_class, weekday) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(community = "Subjects")
+
+states_week <- all_split$states %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(weekday = created_at_DE %>%
+    lubridate::wday(week_start = 1, label = TRUE, locale = "en_US")) %>%
+  group_by(user_class, weekday) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(community = "States")
+
+all_weeks <- bind_rows(twlz_week, chats_week, subjects_week, states_week) %>%
+  mutate(
+    community = community %>% factor(level = c("TWLZ", "EdChatDE", "Subjects", "States"))
+  )
+```
+
+https://ggplot2-book.org/facet.html
+> facet_grid() imposes an additional constraint on the scales: all panels in a column must have the same x scale, and all panels in a row must have the same y scale. This is because each column shares an x axis, and each row shares a y axis.
+
+### Weekdays Barplot
+```{r}
+(all_weeks %>%
+  ggplot(aes(x = weekday, y = freq)) +
+  geom_bar(stat = "identity", color = "white") +
+  facet_grid(user_class ~ community, switch = "y", scales = "free_y") +
+  scale_y_continuous(position = "right", labels = scales::percent) +
+  labs(x = NULL, y = NULL) +
+  # ylim(-10,NA) +
+  theme_bw(base_size = 16) +
+  theme(
+    # axis.ticks.y = element_blank(),
+    # axis.text.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(size = 18, face = "bold") # facet grid labels
+  )) %>%
+  ggview::ggview(., height = 12, width = 20)
+
+ggsave(here::here("plots", "grid_weekdays_bar_freq_wide.png"), width = 20, height = 12, dpi = 600)
+```
+
+
+```{r}
+(all_weeks %>%
+  ggplot(aes(x = weekday, y = freq)) +
+  geom_bar(stat = "identity", color = "white") + # just = 0 keeps 0 on top!! just = 0, width = 1
+  # scale_x_discrete(breaks = 0:, labels = as.character(0:23), expand = c(0, 0)) +
+  # scale_y_continuous(NULL, expand = c(0, 0)) +
+  # coord_polar(start = 0, direction = 1) + # start = 0 for just = 0
+  labs(x = NULL, y = NULL) +
+  facet_grid(community ~ user_class, switch = "y", scales = "free_y") +
+  theme_bw(base_size = 16) +
+  # theme(axis.line=element_line()) +
+  # scale_x_discrete() +
+  # scale_y_continuous() +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(size = 15, face = "bold"), # facet grid labels
+    strip.placement = "outside"
+  )
+) %>% ggview::ggview(., width = 12, height = 20)
+
+# ggview::ggview(width = 12, height = 20)
+ggsave(here::here("plots", "grid_clocks_weekdays_bar_freq.png"), width = 12, height = 20)
+```
+
+
+
+```{r week clock grid}
+(all_weeks %>%
+  ggplot(aes(x = weekday, y = freq)) +
+  geom_bar(stat = "identity", just = .5, width = 1, color = "white") + # just = 0 keeps 0 on top!! just = 0, width = 1
+  # scale_x_discrete(breaks = 0:, labels = as.character(0:23), expand = c(0, 0)) +
+  # scale_y_continuous(NULL, expand = c(0, 0)) +
+  # coord_polar(start = 0, direction = 1) + # start = 0 for just = 0
+  labs(x = NULL, y = NULL) +
+  facet_grid(community ~ user_class, switch = "y", scales = "free_y") +
+  # theme_bw(base_size = 12) +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(size = 15, face = "bold"), # facet grid labels
+    strip.placement = "outside"
+  )
+) %>% ggview::ggview(., width = 12, height = 20)
+
+# ggview::ggview(width = 12, height = 20)
+ggsave(here::here("plots", "grid_clocks_weekdays_bar_freq.png"), width = 12, height = 20)
+```
+
+## Year: Monthly
+```{r}
+# without bots!
+twlz_year <- all_split$twlz %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(month = created_at_DE %>% month(label = TRUE, locale = "en_US")) %>%
+  group_by(user_class, month) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(community = "TWLZ")
+
+chats_year <- all_split$chats %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(month = created_at_DE %>% month(label = TRUE, locale = "en_US")) %>%
+  group_by(user_class, month) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(community = "EdChatDE")
+
+# TODO: remove #relichat??
+subjects_year <- all_split$subjects %>%
+  # filter(!str_detect(all_hashtags_str, "#relichat")) %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(month = created_at_DE %>% month(label = TRUE, locale = "en_US")) %>%
+  group_by(user_class, month) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(community = "Subjects")
+
+states_year <- all_split$states %>%
+  filter(!is_bot) %>%
+  add_user_class() %>%
+  mutate(month = created_at_DE %>% month(label = TRUE, locale = "en_US")) %>%
+  group_by(user_class, month) %>%
+  summarise(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  mutate(community = "States")
+
+all_years <- bind_rows(twlz_year, chats_year, subjects_year, states_year) %>%
+  mutate(
+    community = community %>% factor(level = c("TWLZ", "EdChatDE", "Subjects", "States"))
+  )
+```
+
+```{r}
+# NOTE: Final year/month bar plot
+(all_years %>%
+  ggplot(aes(x = month, y = freq)) +
+  geom_bar(stat = "identity", color = "white") +
+  facet_grid(user_class  ~ community, switch = "y", scales = "free_y") +
+  scale_y_continuous(position = "right", labels = scales::percent) +
+  labs(x = NULL, y = NULL) +
+  # ylim(-10,NA) +
+  theme_bw(base_size = 16) +
+  theme(
+    # axis.ticks.y = element_blank(),
+    # axis.text.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(size = 18, face = "bold") # facet grid labels
+  )) %>%
+  ggview::ggview(., height = 12, width = 20)
+
+ggsave(here::here("plots", "grid_months_bar_freq_wide.png"), width = 20, height = 12)
+```
+
+
+```{r}
+
+TWLZ_stats <- dat %>%
+  filter(is_twlz) %>%
+  group_by(hour, tweet_type) %>%
+  summarise(
+    n = n()
+  )
+
+TWLZ_stats %>%
+  ggplot(aes(x = hour, y = n, fill = tweet_type)) +
+  coord_polar(start = -0.15, direction = 1) +
+  geom_bar(stat = "identity") +
+  labs(title = "The TWLZ clock", subtitle = NULL, caption = NULL, x = NULL, y = NULL) +
+  theme_light() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank()
+  )
+
+ggsave(filename = "TWLZ_clock_typed.png", width = 5, height = 5)
+```
+
+## Months
+```{r}
+TWLZ_stats_month <- dat %>%
+  filter(is_twlz) %>%
+  filter(!is_bot) %>%
+  group_by(month) %>%
+  summarise(
+    n = n()
+  )
+
+TWLZ_stats_month %>%
+  ggplot(aes(x = month, y = n)) +
+  # coord_polar(start = -0.15, direction = 1) +
+  geom_bar(stat = "identity") +
+  labs(title = "The TWLZ year", subtitle = NULL, caption = NULL, x = NULL, y = NULL) +
+  theme_light() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank()
+  )
+
+
+ggsave(filename = "TWLZ_year.png", width = 5, height = 5)
+```
+
+## Weekdays
+```{r}
+# FIXME: Format Weekday in English
+TWLZ_stats_week <- dat %>%
+  filter(is_twlz) %>%
+  group_by(weekday) %>%
+  summarise(
+    n = n()
+  )
+
+TWLZ_stats_week %>%
+  ggplot(aes(x = weekday, y = n)) +
+  coord_polar(start = 0, direction = 1) +
+  geom_bar(stat = "identity") +
+  labs(title = "The TWLZ Week", subtitle = NULL, caption = NULL, x = NULL, y = NULL) +
+  theme_light() +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank()
+  )
+
+ggsave(filename = "TWLZ_week.png", width = 5, height = 5)
+```

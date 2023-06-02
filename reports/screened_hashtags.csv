@@ -1,0 +1,101 @@
+hashtag,is_chat,is_twlz,is_subject,is_state,state,subject,community
+#bayernedu,FALSE,FALSE,FALSE,TRUE,BY,NA,NA
+#bildungrlp,FALSE,FALSE,FALSE,TRUE,RP,NA,NA
+#bildungsh,FALSE,FALSE,FALSE,TRUE,SH,NA,NA
+#bildungslandnrw,FALSE,FALSE,FALSE,TRUE,NW,NA,NA
+#biologieunterricht,FALSE,FALSE,TRUE,FALSE,NA,Biology,NA
+#biounterricht,FALSE,FALSE,TRUE,FALSE,NA,Biology,NA
+#bwedu,FALSE,FALSE,FALSE,TRUE,BW,NA,NA
+#chemielehrer,FALSE,FALSE,TRUE,FALSE,NA,Chemistry,NA
+#chemieunterricht,FALSE,FALSE,TRUE,FALSE,NA,Chemistry,NA
+#deutsch_lernen,FALSE,FALSE,TRUE,FALSE,NA,German,NA
+#deutschdidaktik,FALSE,FALSE,TRUE,FALSE,NA,German,NA
+#deutschlehrer,FALSE,FALSE,TRUE,FALSE,NA,German,NA
+#deutschlehrerin,FALSE,FALSE,TRUE,FALSE,NA,German,NA
+#deutschlernen,FALSE,FALSE,TRUE,FALSE,NA,German,NA
+#deutschunterricht,FALSE,FALSE,TRUE,FALSE,NA,German,NA
+#edchatde,TRUE,FALSE,FALSE,FALSE,NA,NA,EdChatDE
+#edubayern,FALSE,FALSE,FALSE,TRUE,BY,NA,NA
+#edubw,FALSE,FALSE,FALSE,TRUE,BW,NA,NA
+#edunrw,FALSE,FALSE,FALSE,TRUE,NW,NA,NA
+#edush,FALSE,FALSE,FALSE,TRUE,SH,NA,NA
+#englisch_lernen,FALSE,FALSE,TRUE,FALSE,NA,English,NA
+#englischlehrer,FALSE,FALSE,TRUE,FALSE,NA,English,NA
+#englischlehrerin,FALSE,FALSE,TRUE,FALSE,NA,English,NA
+#englischlernen,FALSE,FALSE,TRUE,FALSE,NA,English,NA
+#englischunterricht,FALSE,FALSE,TRUE,FALSE,NA,English,NA
+#erdkundeunterricht,FALSE,FALSE,TRUE,FALSE,NA,Geography,NA
+#ethikunterricht,FALSE,FALSE,TRUE,FALSE,NA,Ethics,NA
+#franzoesischlernen,FALSE,FALSE,TRUE,FALSE,NA,French,NA
+#franzoesischunterricht,FALSE,FALSE,TRUE,FALSE,NA,French,NA
+#geographielehrer,FALSE,FALSE,TRUE,FALSE,NA,Geography,NA
+#geographieunterricht,FALSE,FALSE,TRUE,FALSE,NA,Geography,NA
+#geounterricht,FALSE,FALSE,TRUE,FALSE,NA,Geography,NA
+#geschichtsdidaktik,FALSE,FALSE,TRUE,FALSE,NA,History,NA
+#geschichtslehrer,FALSE,FALSE,TRUE,FALSE,NA,History,NA
+#geschichtsunterricht,FALSE,FALSE,TRUE,FALSE,NA,History,NA
+#geschichtswettbewerb,FALSE,FALSE,TRUE,FALSE,NA,History,NA
+#hauptfachinformatik,FALSE,FALSE,TRUE,FALSE,NA,Computer Science,NA
+#hbedu,FALSE,FALSE,FALSE,TRUE,HB,NA,NA
+#hessenedu,FALSE,FALSE,FALSE,TRUE,HE,NA,NA
+#informatikschule,FALSE,FALSE,TRUE,FALSE,NA,Computer Science,NA
+#informatikunterricht,FALSE,FALSE,TRUE,FALSE,NA,Computer Science,NA
+#japanischlernen,FALSE,FALSE,TRUE,FALSE,NA,Japanese,NA
+#kunstlehrer,FALSE,FALSE,TRUE,FALSE,NA,Arts,NA
+#kunstschule,FALSE,FALSE,TRUE,FALSE,NA,Arts,NA
+#kunstunterricht,FALSE,FALSE,TRUE,FALSE,NA,Arts,NA
+#kunstwettbewerb,FALSE,FALSE,TRUE,FALSE,NA,Arts,NA
+#lateinchat,FALSE,FALSE,TRUE,FALSE,NA,Latin,NA
+#lateinunterricht,FALSE,FALSE,TRUE,FALSE,NA,Latin,NA
+#lehrerzimmer,FALSE,TRUE,FALSE,FALSE,NA,NA,TWLZ
+#leitfachinformatik,FALSE,FALSE,TRUE,FALSE,NA,Computer Science,NA
+#lernendeutsch,FALSE,FALSE,TRUE,FALSE,NA,German,NA
+#literaturdidaktik,FALSE,FALSE,TRUE,FALSE,NA,German,NA
+#literaturwettbewerb,FALSE,FALSE,TRUE,FALSE,NA,German,NA
+#matheabi,FALSE,FALSE,TRUE,FALSE,NA,Mathematics,NA
+#matheabitur,FALSE,FALSE,TRUE,FALSE,NA,Mathematics,NA
+#mathelehrer,FALSE,FALSE,TRUE,FALSE,NA,Mathematics,NA
+#mathelernen,FALSE,FALSE,TRUE,FALSE,NA,Mathematics,NA
+#mathematikunterricht,FALSE,FALSE,TRUE,FALSE,NA,Mathematics,NA
+#matheunterricht,FALSE,FALSE,TRUE,FALSE,NA,Mathematics,NA
+#musiklehrer,FALSE,FALSE,TRUE,FALSE,NA,Music,NA
+#musikschule,FALSE,FALSE,TRUE,FALSE,NA,Music,NA
+#musikunterricht,FALSE,FALSE,TRUE,FALSE,NA,Music,NA
+#musikwettbewerb,FALSE,FALSE,TRUE,FALSE,NA,Music,NA
+#mvedu,FALSE,FALSE,FALSE,TRUE,MV,NA,NA
+#ndsedu,FALSE,FALSE,FALSE,TRUE,NI,NA,NA
+#nrwedu,FALSE,FALSE,FALSE,TRUE,NW,NA,NA
+#paedagogikunterricht,FALSE,FALSE,TRUE,FALSE,NA ,Education,NA
+#pflichtfachinformatik,FALSE,FALSE,TRUE,FALSE,NA,Computer Science,NA
+#philoedu,FALSE,FALSE,TRUE,FALSE,NA,Philosophy,NA
+#philosophieunterricht,FALSE,FALSE,TRUE,FALSE,NA,Philosophy,NA
+#physikedu,FALSE,FALSE,TRUE,FALSE,NA,Physics,NA
+#physiklehrer,FALSE,FALSE,TRUE,FALSE,NA,Physics,NA
+#physikunterricht,FALSE,FALSE,TRUE,FALSE,NA,Physics,NA
+#politikunterricht,FALSE,FALSE,TRUE,FALSE,NA,Politics,NA
+#portugiesischlernen,FALSE,FALSE,TRUE,FALSE,NA,Portuguese,NA
+#relichat,FALSE,FALSE,TRUE,FALSE,NA,Religious Studies,NA
+#religionslehrer,FALSE,FALSE,TRUE,FALSE,NA,Religious Studies,NA
+#religionslehrerin,FALSE,FALSE,TRUE,FALSE,NA,Religious Studies,NA
+#religionsunterricht,FALSE,FALSE,TRUE,FALSE,NA,Religious Studies,NA
+#reliunterricht,FALSE,FALSE,TRUE,FALSE,NA,Religious Studies,NA
+#rlpbildung,FALSE,FALSE,FALSE,TRUE,RP,NA,NA
+#rlpedu,FALSE,FALSE,FALSE,TRUE,RP,NA,NA
+#russischlernen,FALSE,FALSE,TRUE,FALSE,NA,Russian,NA
+#schuledigitalbw,FALSE,FALSE,FALSE,TRUE,BW,NA,NA
+#schuledigitalnrw,FALSE,FALSE,FALSE,TRUE,NW,NA,NA
+#schulenrw,FALSE,FALSE,FALSE,TRUE,NW,NA,NA
+#schulewirtschaft,FALSE,FALSE,TRUE,FALSE,NA,Economics,NA
+#schulfachwirtschaft,FALSE,FALSE,TRUE,FALSE,NA,Economics,NA
+#spanischunterricht,FALSE,FALSE,TRUE,FALSE,NA,Spanish,NA
+#sportdigital,FALSE,FALSE,TRUE,FALSE,NA,Sports,NA
+#sportlehrer,FALSE,FALSE,TRUE,FALSE,NA,Sports,NA
+#sportschule,FALSE,FALSE,TRUE,FALSE,NA,Sports,NA
+#sportunterricht,FALSE,FALSE,TRUE,FALSE,NA,Sports,NA
+#tlz,FALSE,TRUE,FALSE,FALSE,NA,NA,TWLZ
+#twitterkollegium,FALSE,TRUE,FALSE,FALSE,NA,NA,TWLZ
+#twitterlehrerzimmer,FALSE,TRUE,FALSE,FALSE,NA,NA,TWLZ
+#twitterlz,FALSE,TRUE,FALSE,FALSE,NA,NA,TWLZ
+#twlz,FALSE,TRUE,FALSE,FALSE,NA,NA,TWLZ
+#wirtschaftsschule,FALSE,FALSE,TRUE,FALSE,NA,Economics,NA
+#wirtschaftsunterricht,FALSE,FALSE,TRUE,FALSE,NA,Economics,NA

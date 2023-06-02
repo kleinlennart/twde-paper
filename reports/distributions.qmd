@@ -1,0 +1,252 @@
+---
+title: "Distribution Analysis of Twitter Data"
+author: "Lennart Klein"
+date: "2023-03-02"
+format: 
+  html:
+    code-link: true
+    code-copy: hover
+    toc: true
+    toc-location: left
+    number-sections: true
+    theme: cosmo
+    # embed-resources: true
+execute:
+  cache: true
+editor: visual
+---
+
+```{r}
+#| echo: true
+#| output: false
+
+library(tidyverse)
+```
+
+```{r}
+dat <- all_split$dataset
+```
+
+```{r}
+dat$repost_count %>% summary()
+dat %>%
+  filter(repost_count > 0) %>%
+  pull(repost_count) %>%
+  summary()
+```
+
+```{r}
+reposts <- dat %>% select(repost_count)
+
+(reposts %>%
+  # filter(repost_count > 10) %>%
+  ggplot(aes(repost_count)) +
+  geom_line(stat = "count")) %>% ggview::ggview(., height = 5, width = 5)
+
+ggsave("repost_line.png", height = 5, width = 5)
+
+
+# TODO: check retweets themselves!!
+
+library("fitdistrplus")
+
+plotdist(dat$repost_count, histo = TRUE, demp = TRUE)
+
+descdist(dat$repost_count, boot = 10)
+```
+
+```{r}
+
+dat %>%
+  filter(!is_repost) %>%
+  count(repost_count) %>%
+  mutate(freq = round(n / sum(n), 3))
+
+dat %>%
+  filter(retweet_count == 2) %>%
+  sample_n(100) %>%
+  View()
+
+
+dat %>%
+  sample_n(10000) %>%
+  View()
+
+test <- dat %>%
+  filter(status_id %in% c("47328257", "42286556", "30523909"))
+
+
+test[, c("status_id", "retweet_count", "quote_count", "repost_count", "is_retweet", "is_repost")] %>% View()
+
+
+# zero proportion
+
+repost_count <- dat %>% pull(repost_count)
+# repost_count <- dat %>% filter(repost_count > 0) %>% pull(repost_count)
+
+
+library("extraDistr") # extraDistr::dzip
+# library(gamlss)
+library("VGAM")
+library(poweRlaw)
+
+
+# Count distribution: Poisson or negative binomial
+fit.poisson <- fitdist(repost_count, distr = "pois", method = "mle")
+fit.negbinom <- fitdist(repost_count, distr = "nbinom", method = "mle")
+# fit.zip <- fitdist(repost_count, "ZIP", start = list(mu = 2, sigma = 0.5))
+fit.zip <- fitdist(repost_count, "zipois", start = list(lambda = 1, pstr0 = .1))
+
+# fit.zibinom <- fitdist(repost_count, "zibinom", start = list(size = 1, prob = 0.1, pstr0 = 0.5))
+# pstr0 = Probability of a structural zero
+# ?zibinom
+
+
+fit.zibinom <- fitdist(repost_count, "ZINBI", 
+                       start = list(mu = 1, sigma = 1, nu = 0.3))
+
+repost_count_scale <- repost_count / 10
+
+fit.zibinom <- fitdist(repost_count, "zinb", discrete = TRUE, method = "mse",
+                       start = list(size = 1, prob = 0.5, pi = 0.5))
+
+
+fit.powerlaw <- fitdist((repost_count / 10), "plcon", method = "mle",
+                       start = list(xmin = 0, alpha = 0.5))
+
+
+fitdistrplus::mledist()
+
+poweRlaw::dplcon()
+extraDistr::dzinb()
+
+
+plot(fit.poisson)
+summary(fit.poisson)
+
+plot(fit.negbinom)
+summary(fit.negbinom)
+
+# plot(fit.zip)
+summary(fit.zip)
+distr1 <- dzipois(0:max(repost_count), lambda = fit.zip$estimate, pstr0 = mean(repost_count == 0))
+distr2 <- pzipois(0:max(repost_count), lambda = fit.zip$estimate, pstr0 = mean(repost_count == 0))
+
+op <- par(mfrow = c(1, 2))
+
+plot(proportions(table(repost_count)),
+  ylim = c(0, max(proportions(table(repost_count)))),
+  main = "Empirical and \ntheoretical distribution", ylab = "Density"
+)
+lines((0:max(repost_count)) + 0.2, distr1, type = "h", lwd = 2, col = 2)
+
+legend("topright", c("empirical", "theoretical"), lwd = 2, col = 1:2, cex = 0.8)
+
+plot(ecdf(repost_count), pch = 1, col.hor = 0, main = "Empirical and \ntheoretial CDFs")
+
+lines(0:max(repost_count), distr2, type = "s", lwd = 2, col = 2)
+legend("bottomright", c("empirical", "theoretical"), lwd = 2, col = 1:2, cex = 0.8)
+par(op)
+
+
+
+#####
+
+# no zeros allowed
+# fit.weibull <- fitdist(repost_count, distr = "weibull", method = "mle", lower = c(0, 0))
+fit.weibull
+summary(fit.weibull)
+plot(fit.weibull)
+
+help.search("distribution", package = "stats")
+```
+
+```{r}
+denscomp(list(fit.poisson, fit.negbinom), legendtext = c("Poisson", "NegBinom"))
+
+(gof <- gofstat(list(fit.poisson, fit.negbinom, fit.zip)))
+
+gof$aic %>% which.min()
+gof$bic %>% which.min()
+
+```
+
+```{r}
+
+dat %>%
+  filter(repost_count > 0) %>%
+  group_by(is_teacher) %>%
+  summarise(
+    M_repost_count = mean(repost_count),
+    Med_repost_count = median(repost_count)
+  )
+```
+
+# Distribution of user_tweet_counts
+
+```{r}
+library(fitdistrplus)
+
+# Note: potentially different mixtures based on communities when aggregated over dataset?
+
+# get data
+user_tweet_count <- all_split$dataset %>% 
+  filter(!is_bot) %>% 
+  # filter(is_teacher) %>% 
+  count(user_id) %>% 
+  pull(n)
+```
+
+```{r}
+# first Plots
+plotdist(user_tweet_count, histo = TRUE, demp = TRUE)
+
+
+descdist(user_tweet_count, boot = NULL)
+# -> non conclusive, doesn't include common count distributions!
+
+
+(tibble(user_tweet_count = user_tweet_count) %>% 
+  # filter(repost_count > 10) %>%
+  ggplot(aes(user_tweet_count)) +
+  geom_line(stat = "count")) %>% 
+    ggview::ggview(., height = 5, width = 5)
+
+```
+
+## Check distribution fit
+
+```{r}
+library(VGAM) # for VGAM::zipois
+
+fit.poisson <- fitdist(user_tweet_count, distr = "pois", method = "mle")
+fit.negbinom <- fitdist(user_tweet_count, distr = "nbinom", method = "mle")
+# fit.zip <- fitdist(repost_count, "ZIP", start = list(mu = 2, sigma = 0.5))
+# fit.zip <- fitdist(user_tweet_count, "zipois", start = list(lambda = 1, pstr0 = .1))
+
+### Check models
+
+plot(fit.poisson)
+summary(fit.poisson)
+
+plot(fit.negbinom)
+summary(fit.negbinom)
+
+plot(fit.zip)
+summary(fit.zip)
+
+zipois
+
+```
+
+## Pick best distribution
+
+```{fitdistrplus::denscomp(list(fit.poisson, fit.negbinom),}
+                       legendtext = c("Poisson", "NegBinom"))
+
+(gof <- gofstat(list(fit.poisson, fit.negbinom, fit.zip)))
+
+gof$aic %>% which.min()
+gof$bic %>% which.min()
+```
+

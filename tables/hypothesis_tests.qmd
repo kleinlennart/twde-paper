@@ -1,0 +1,271 @@
+---
+title: "Hypothesis Tests"
+subtitle: ""
+author: "Lennart Klein"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    toc-location: left
+    number-sections: true
+    code-link: true
+    code-copy: hover
+    code-tools: true
+    theme: cosmo
+    smooth-scroll: true
+    embed-resources: true
+execute:
+  cache: true
+  freeze: auto
+---
+
+```{r setup}
+#| echo: true
+#| output: false
+
+library(tidyverse)
+source(here::here("tables", "table_utils.R"))
+```
+
+```{r}
+all_split <- readRDS(here::here("data", "split_all_dat.rds"))
+# raw <- all_split # backup
+```
+
+## Comparing Sentiment
+
+-   how is the sentiment variable actually structured?!
+-   make a table of teacher/non-teacher and No positive/ No negative tweets?
+-   for each category
+-   calculate Chi square on each table
+-   is there a Chi square effect size?
+-   extract values with broom?
+-   make table including means? or sentiment ratios
+
+```{r}
+# NOTE: excluding retweets!
+
+ratios <- all_split %>% map_dfr(sentiment_ratios)
+chis <- all_split %>% map_dfr(function(sub) {
+  sub <- sub %>% filter(!is_retweet)
+  results <- chisq.test(sub$is_teacher, sub$senti_final) %>% broom::tidy()
+  results$N <- nrow(sub)
+  return(results)
+})
+
+results <- bind_cols(
+  Community = c("TWLZ", "Chats", "Subjects", "States", "Overall"),
+  ratios,
+  chis %>% select(-parameter, -method)
+)
+
+results <- results %>% mutate(
+  C = sqrt(statistic / (statistic + N)),
+  Phi = sqrt(statistic / N) %>% round(3),
+  p.value = p.value %>% round(3),
+  stars = symnum(p.value,
+    corr = FALSE, na = FALSE,
+    cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
+    symbols = c("***", "**", "*", ".", " ")
+  ),
+  Chi = paste0(round(statistic, 2), stars)
+)
+
+results %>%
+  select(Community, SR_total, SR_teacher, SR_non_teacher, Chi, Phi) %>%
+  clipr::write_clip()
+```
+
+# Comparison of Engagement Variables
+```{r}
+library(pscl)
+library(MASS)
+library(boot)
+
+# help.search("zeroinfl")
+# ?zeroinfl
+```
+
+## Check Overdispersion
+
+Overdispersion occurs when the observed variance is higher than the variance of a theoretical model. For Poisson models, variance increases with the mean and, therefore, variance usually (roughly) equals the mean value. If the variance is much higher, the data are "overdispersed".
+
+```{r}
+test$repost_count %>% mean()
+test$repost_count %>% var()
+test$repost_count %>% sd()
+
+test$repost_count %>% table()
+test$repost_count %>% table()
+```
+
+## Modeling
+```{r}
+test <- test %>% filter(!is_retweet)
+summary(lm_basic)
+
+summary(test$repost_count)
+(table(test$repost_count) / nrow(test))[1] # Pi (zero rate)
+
+test %>%
+  ggplot(aes(repost_count)) +
+  geom_bar() +
+  xlim(NA, 10)
+```
+
+```{r}
+dat <- all_split$dataset %>% filter(!is_retweet)
+```
+
+## Zero-inflated models
+```{r}
+# OLS Linear Regression
+lm_basic <- lm(repost_count ~ is_teacher, data = dat)
+
+# Count models
+lm_poiss <- glm(repost_count ~ is_teacher, data = dat, family = poisson(link = log))
+
+lm_negbin <- MASS::glm.nb(repost_count ~ is_teacher, data = dat)
+
+# zero-inflated mixture count models
+lm_zipoiss <- pscl::zeroinfl(repost_count ~ is_teacher, data = dat, dist = "poisson")
+
+## inflation with regressors
+lm_zinb <- pscl::zeroinfl(repost_count ~ is_teacher, data = dat, dist = "negbin")
+# saveRDS(lm_zinb, here::here("models", "lm_zinb.rds"))
+
+## with simple inflation (no regressors for zero component)
+lm_zinb_s <- pscl::zeroinfl(repost_count ~ is_teacher | 1, data = dat, dist = "negbin")
+# saveRDS(lm_zinb_s, here::here("models", "lm_zinb_s.rds"))
+
+# Warning: system is computationally singular: reciprocal condition number = 6.46831e-33FALSE
+
+# optional list with elements "count" and "zero" (and potentially "theta") containing the coefficients for the corresponding component.
+# theta parameter shown is the dispersion parameter
+
+beepr::beep("mario")
+```
+
+## Model Comparison
+
+```{r}
+library(modelsummary)
+
+models <- list(
+  "OLS_Linear" = lm_basic,
+  "Poisson" = lm_poiss,
+  "NegBinomial" = lm_negbin,
+  "ZIPoisson" = lm_zipoiss,
+  "ZINegBinomial" = lm_zinb,
+  "ZINegBinomial_S" = lm_zinb_s
+)
+
+modelsummary(models)
+ms <- modelsummary(models, output = "data.frame")
+ms %>% clipr::write_clip()
+```
+
+## Goodness of Fit
+```{r}
+ms_list <- modelsummary(models, output = "modelsummary_list")
+
+gof <- ms_list %>%
+  map_dfr(~ .x$glance[c("bic", "aic")]) %>%
+  mutate(
+    .after = bic,
+    bic_rank = rank(bic)
+  ) %>%
+  mutate(
+    .after = aic,
+    aic_rank = rank(aic)
+  ) %>%
+  mutate(model = names(ms_list)) %>%
+  arrange(bic, aic)
+gof %>% clipr::write_clip()
+
+# performance::model_performance
+# broom::glance
+```
+
+
+## Test
+```{r}
+ filter(.x, !is_retweet)) %>% # remove retweets (double values)
+  map(~ filter(.x, !is_bot)) %>% # remove bots
+  map(~ MASS::glm.nb(like_count ~ is_teacher, data = .x))
+```
+
+
+
+# Final Analysis: Comparing Teacher Engagement
+```{r}
+tidy_teacher_models <- function(model) {
+  model %>%
+    broom::tidy(conf.int = TRUE) %>% # profiling
+    mutate(
+      # exponentiate coeffs -> incident rate ratios
+      estimate_exp = exp(estimate), 
+      # theta = model$theta, # get dispersion theta
+      # alpha = 1 / theta, # convert to more commonly used alpha
+      stars = symnum(p.value,
+        corr = FALSE, na = FALSE,
+        cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
+        symbols = c("***", "**", "*", "+", " ")
+      ),
+      RR = paste0(round(estimate_exp, 3), stars),
+      CI = str_glue("[{lower};{upper};]")
+    )
+}
+```
+
+```{r}
+set.seed(42)
+
+like_models <- all_split %>%
+  map(~ filter(.x, !is_retweet)) %>% # remove retweets (double values)
+  map(~ filter(.x, !is_bot)) %>% # remove bots
+  map(~ MASS::glm.nb(like_count ~ is_teacher, data = .x))
+# saveRDS(repost_models, here::here("models", "repost_models.rds"))
+
+like_models_tidy <- like_models %>% map(tidy_teacher_models)
+
+beepr::beep("mario")
+```
+
+```{r}
+like_models_tidy %>%
+  map("RR") %>% # rate ratio
+  map_chr(2) %>% # not intercept
+  clipr::write_clip()
+
+# saveRDS(like_models_tidy, here::here("data", "like_models_tidy.rds"))
+```
+
+## Effect Size - Exploration
+```{r}
+test <- repost_models$twlz
+
+## Get the (original) sample means from coeffs! CHECK
+mean0 <- exp(-0.09844672)
+mean1 <- exp(-0.09844672) * exp(-0.21902902)
+
+mean0 <- exp(test$coefficients[[1]])
+mean1 <- exp(test$coefficients[[1]]) * exp(test$coefficients[[2]])
+
+## Get (estimated) sample variances/SDs from coeffs and the dispersion paramter (theta -> alpha)
+# NOTE: don't have to be the same as observed sample means!
+alpha <- 1 / test$theta
+
+sd0 <- sqrt(mean0 + (alpha * mean0^2))
+
+# M + Disperson M-squared (Legit)
+var0 <- mean0 + (alpha * mean0^2)
+sd0 <- sqrt(mean0 + (alpha * mean0^2))
+
+sd_pooled <- sqrt(((n1 - 1) * s1^2 + (n2 - 1) * s2^2) / (n1 + n1 - 2))
+
+## Effects
+
+expeff <- exp(slope) # exponential Effect = Rate Ratio
+coheff <- (mean1 - mean0) / sd0 # shouldn't this be the pooled SD since sample size of groups is not the same!
+```

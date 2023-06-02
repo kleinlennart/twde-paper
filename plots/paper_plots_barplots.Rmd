@@ -1,0 +1,134 @@
+---
+title: 'Paper Plots'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(colorBlindness)
+
+pal <- c("#c1272d", "#0000a7", "#008176", "#eecc16")
+```
+
+```{r data}
+# all_split <- readRDS(here::here("data", "split_all_dat.rds"))
+```
+
+# User Classification
+## Tweet Counts
+```{r}
+# helper function
+add_user_class <- function(dat) {
+  dat %>%
+    mutate(
+      user_class = case_when(
+        is_bot ~ "Bot",
+        is_teacher ~ "Teacher",
+        !is_bot & !is_teacher ~ "Non-teacher",
+        TRUE ~ NA_character_
+      ) %>% factor(levels = c("Teacher", "Non-teacher", "Bot"))
+    )
+}
+```
+
+## User Class Table
+```{r}
+## number of tweets from user type for each community category
+stats <- all_split %>% map(~ .x %>%
+  add_user_class() %>%
+  count(user_class) %>%
+  pull(n))
+
+combined <- tibble(user_class = c("Teacher", "Non-teacher", "Bot")) %>% bind_cols(stats)
+names(combined) <- c("user_class", "TWLZ", "EdChatDE", "Subjects", "States", "Overall")
+
+group_tweet_counts <- combined %>%
+  pivot_longer(cols = where(is.numeric), names_to = "community", values_to = "n")
+
+group_tweet_counts <- group_tweet_counts %>%
+  mutate(
+    # reorder community for plot
+    community = community %>% factor(levels = c("Overall", "TWLZ", "EdChatDE", "Subjects", "States"))
+  )
+```
+
+## Bar plot user type stacked for all communities, fill
+```{r}
+(group_tweet_counts %>%
+  ggplot(aes(x = community, y = n, fill = user_class)) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = pal, guide = guide_legend(reverse = TRUE)) +
+  labs(x = NULL, y = NULL, fill = NULL) +
+  papaja::theme_apa(box = FALSE) +
+  # coord_fixed() +
+  theme(
+    legend.position = "bottom",
+    # axis.text.x = element_text(margin = margin(b = -15))
+    # legend.margin = margin(t = )
+    legend.margin = ggplot2::margin(t = ggplot2::rel(1))
+  )
+) %>% ggview::ggview(., width = 6, height = 6)
+
+ggsave(here::here("plots", "group_stacked.png"), width = 6, height = 6)
+```
+
+
+## Tweet Type + User Class Bar Plot
+```{r}
+# NOTE: all_split Including Bots!
+type_stats <- all_split$dataset %>%
+  add_user_class() %>%
+  count(user_class, tweet_type)
+
+type_stats <- type_stats %>%
+  mutate(
+    tweet_type = tweet_type %>% factor(c("Conversation", "Repost", "Original"))
+  )
+
+group_tweet_types <- type_stats %>%
+  pivot_wider(names_from = tweet_type, values_from = n)
+
+group_tweet_types %>% clipr::write_clip()
+```
+
+```{r}
+types <- all_split$dataset %>%
+  mutate(
+    tweet_type = case_when(
+      is_original ~ "Original",
+      is_repost ~ "Repost",
+      conv_is_real ~ "Conversation", # only includes real conversations
+      TRUE ~ "Other"
+    )
+  ) %>%
+  add_user_class()
+
+type_stats <- types %>%
+  count(user_class, tweet_type)
+```
+
+
+## Bar Plot stack fill for tweet type and users
+```{r}
+(type_stats %>%
+  filter(tweet_type != "Other") %>%
+  ggplot(aes(x = user_class, y = n, fill = tweet_type)) +
+  geom_bar(stat = "identity", position = "fill", width = 0.8) +
+  scale_fill_manual(values = pal, guide = guide_legend(reverse = TRUE)) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = NULL, y = NULL, fill = NULL) +
+  papaja::theme_apa(box = FALSE) +
+  # coord_fixed() +
+  theme(
+    legend.position = "bottom",
+    # axis.text.x = element_text(margin = margin(b = -15))
+    # legend.margin = margin(t = )
+    legend.margin = ggplot2::margin(t = ggplot2::rel(1))
+  )
+) %>% ggview::ggview(., width = 5, height = 6)
+
+
+ggsave(here::here("plots", "group_tweet_type_bars.png"), width = 6, height = 6)
+```
